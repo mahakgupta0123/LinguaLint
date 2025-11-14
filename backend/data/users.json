@@ -1,1 +1,36 @@
-{}
+{
+  "user_demo123": {
+    "id": "user_demo123",
+    "username": "demo_developer",
+    "github_id": 12345,
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Demo",
+    "token": "demo_token_72c157d694fb97ce",
+    "created_at": "2025-11-13T23:07:41.983119",
+    "repos": [
+      {
+        "repo_id": 1,
+        "full_name": "demo/frontend-app",
+        "webhook_id": "hook_123",
+        "created_at": "2025-11-13T23:07:41.983130"
+      }
+    ],
+    "review_count": 5,
+    "preferences": {
+      "language": "en",
+      "detail_level": "high",
+      "preferred_languages": [
+        "hi",
+        "ja"
+      ]
+    },
+    "history": {
+      "common_issues": [
+        "missing_null_checks",
+        "hardcoded_strings",
+        "async_await"
+      ],
+      "total_upvotes": 23,
+      "total_downvotes": 2
+    }
+  }
+}

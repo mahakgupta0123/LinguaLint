@@ -1,19 +1,19 @@
 {
-  "$schema": "https://lingo.dev/schema/i18n.json",
   "version": "1.10",
   "locale": {
     "source": "en",
-    "targets": ["es"]
+    "targets": [
+      "es",
+      "hi",
+      "ja"
+    ]
   },
   "buckets": {
     "json": {
-      "include": ["locales/[locale].json"]
+      "include": [
+        "locales/[locale].json"
+      ]
     }
-  },
-  "provider": {
-    "id": "openai",
-    "model": "gpt-4o-mini",
-    "prompt": "Translate the provided text from {source} to {target}."
   },
   "$schema": "https://lingo.dev/schema/i18n.json"
 }
