@@ -1,0 +1,16 @@
+{
+  "Missing input validation": {
+    "en": "Missing input validation",
+    "hi": "\u0907\u0928\u092a\u0941\u091f \u0938\u0924\u094d\u092f\u093e\u092a\u0928 \u0917\u093e\u092f\u092c \u0939\u0948",
+    "ja": "\u5165\u529b\u691c\u8a3c\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059",
+    "es": "Falta validaci\u00f3n de entrada",
+    "fr": "Validation d'entr\u00e9e manquante"
+  },
+  "Use async/await": {
+    "en": "Use async/await",
+    "hi": "async/await \u0915\u093e \u0909\u092a\u092f\u094b\u0917 \u0915\u0930\u0947\u0902",
+    "ja": "async/await\u3092\u4f7f\u7528\u3057\u3066\u304f\u3060\u3055\u3044",
+    "es": "Usa async/await",
+    "fr": "Utilisez async/await"
+  }
+}
