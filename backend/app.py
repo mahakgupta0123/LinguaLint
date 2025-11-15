@@ -35,9 +35,9 @@ logger = logging.getLogger(__name__)
 
 # Data storage paths (unchanged)
 DATA_DIR = 'data'
-USERS_FILE = os.path.join(DATA_DIR, 'users.json')
-REVIEWS_FILE = os.path.join(DATA_DIR, 'reviews.json')
-TRANSLATIONS_FILE = os.path.join(DATA_DIR, 'translations.json')
+USERS_FILE = os.path.join(DATA_DIR, 'user.json')
+REVIEWS_FILE = os.path.join(DATA_DIR, 'review.json')
+TRANSLATIONS_FILE = os.path.join(DATA_DIR, 'translation.json')
 
 # Create data directory if not exists (unchanged)
 os.makedirs(DATA_DIR, exist_ok=True)
