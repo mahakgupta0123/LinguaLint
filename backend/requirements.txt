@@ -6,4 +6,4 @@ requests==2.31.0
 python-dotenv==1.0.0
 flake8==6.1.0
 gunicorn==21.2.0
-eventlet==0.33.3
+simple-websocket==1.0.0
