@@ -1,8 +1,3 @@
-"""
-Multilingual Code Review AI - Backend Server
-Flask application with GitHub OAuth, webhooks, and AI analysis
-"""
-
 from flask import Flask, request, jsonify, redirect, session
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -16,6 +11,10 @@ import secrets
 import subprocess
 from functools import wraps
 import logging
+from dotenv import load_dotenv  # Added for .env loading
+
+# Load environment variables
+load_dotenv()
 
 # Configuration
 app = Flask(__name__)
@@ -25,7 +24,8 @@ app.config['GITHUB_CLIENT_SECRET'] = os.environ.get('GITHUB_CLIENT_SECRET', 'you
 app.config['HUGGINGFACE_API_KEY'] = os.environ.get('HUGGINGFACE_API_KEY', 'your_hf_key')
 app.config['WEBHOOK_SECRET'] = os.environ.get('WEBHOOK_SECRET', secrets.token_hex(32))
 app.config['FRONTEND_URL'] = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
-
+app.config['APP_URL'] = os.environ.get('APP_URL', 'http://localhost:5000')  # Added for consistent URLs
+app.config['GITHUB_API_KEY'] = os.environ.get('GITHUB_API_KEY', 'your_personal_access_token')
 CORS(app, origins=[app.config['FRONTEND_URL']], supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins=[app.config['FRONTEND_URL']])
 
@@ -33,16 +33,16 @@ socketio = SocketIO(app, cors_allowed_origins=[app.config['FRONTEND_URL']])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Data storage paths
+# Data storage paths (unchanged)
 DATA_DIR = 'data'
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 REVIEWS_FILE = os.path.join(DATA_DIR, 'reviews.json')
 TRANSLATIONS_FILE = os.path.join(DATA_DIR, 'translations.json')
 
-# Create data directory if not exists
+# Create data directory if not exists (unchanged)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Initialize data files
+# Initialize data files (unchanged)
 for file_path in [USERS_FILE, REVIEWS_FILE, TRANSLATIONS_FILE]:
     if not os.path.exists(file_path):
         with open(file_path, 'w') as f:
@@ -89,46 +89,49 @@ def verify_webhook_signature(payload_body, signature_header):
 
 
 # ==================== AUTHENTICATION ====================
-
 def require_auth(f):
-    """Decorator to require authentication"""
+    """Decorator to require authentication (unchanged)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         if not token:
             return jsonify({'error': 'Authentication required'}), 401
-        
         users = load_json(USERS_FILE)
         user = next((u for u in users.values() if u.get('token') == token), None)
         if not user:
             return jsonify({'error': 'Invalid token'}), 401
-        
         request.current_user = user
         return f(*args, **kwargs)
     return decorated_function
 
-
 @app.route('/auth/github', methods=['GET'])
 def github_auth():
     """Redirect to GitHub OAuth"""
-    redirect_uri = f"{request.host_url}auth/github/callback"
+    redirect_uri = f"{app.config['APP_URL']}/auth/github/callback"  # Use APP_URL
     scope = "repo,user,write:repo_hook"
-    return redirect(
+    state = secrets.token_hex(16)
+    logger.info(f"GitHub OAuth redirect_uri: {redirect_uri}, state: {state}")
+    auth_url = (
         f"https://github.com/login/oauth/authorize?"
         f"client_id={app.config['GITHUB_CLIENT_ID']}&"
         f"redirect_uri={redirect_uri}&"
         f"scope={scope}&"
-        f"state={secrets.token_hex(16)}"
+        f"state={state}"
     )
-
+    logger.info(f"Redirecting to GitHub: {auth_url}")
+    return redirect(auth_url)
 
 @app.route('/auth/github/callback', methods=['GET'])
 def github_callback():
     """Handle GitHub OAuth callback"""
     code = request.args.get('code')
-    if not code:
-        return redirect(f"{app.config['FRONTEND_URL']}?error=auth_failed")
+    state = request.args.get('state')
+    logger.info(f"OAuth callback received, code: {code}, state: {state}")
     
+    if not code:
+        logger.error("No code provided in OAuth callback")
+        return redirect(f"{app.config['FRONTEND_URL']}?error=auth_failed&message=no_code")
+
     # Exchange code for access token
     token_response = requests.post(
         'https://github.com/login/oauth/access_token',
@@ -141,11 +144,16 @@ def github_callback():
     )
     
     if token_response.status_code != 200:
-        return redirect(f"{app.config['FRONTEND_URL']}?error=token_failed")
-    
+        logger.error(f"Token exchange failed: {token_response.text}")
+        return redirect(f"{app.config['FRONTEND_URL']}?error=token_failed&status={token_response.status_code}")
+
     token_data = token_response.json()
     access_token = token_data.get('access_token')
     
+    if not access_token:
+        logger.error("No access token in response")
+        return redirect(f"{app.config['FRONTEND_URL']}?error=token_failed&message=no_token")
+
     # Get user info
     user_response = requests.get(
         'https://api.github.com/user',
@@ -153,8 +161,9 @@ def github_callback():
     )
     
     if user_response.status_code != 200:
-        return redirect(f"{app.config['FRONTEND_URL']}?error=user_failed")
-    
+        logger.error(f"User info fetch failed: {user_response.text}")
+        return redirect(f"{app.config['FRONTEND_URL']}?error=user_failed&status={user_response.status_code}")
+
     user_data = user_response.json()
     
     # Save user data
@@ -178,34 +187,22 @@ def github_callback():
     
     save_json(USERS_FILE, users)
     
-    # Redirect with token
-    return redirect(f"{app.config['FRONTEND_URL']}?token={access_token}")
-
-
-@app.route('/api/user', methods=['GET'])
-@require_auth
-def get_user():
-    """Get current user info"""
-    return jsonify(request.current_user)
-
+    logger.info(f"User {user_data['login']} authenticated, token saved")
+    return redirect(f"{app.config['FRONTEND_URL']}?token={access_token}&state={state}")
 
 # ==================== REPOSITORY MANAGEMENT ====================
-
 @app.route('/api/repos', methods=['GET'])
 @require_auth
 def get_repos():
-    """Get user's GitHub repositories"""
+    """Get user's GitHub repositories (unchanged)"""
     user = request.current_user
-    
     response = requests.get(
         'https://api.github.com/user/repos',
         headers={'Authorization': f"token {user['token']}"},
         params={'per_page': 100, 'sort': 'updated'}
     )
-    
     if response.status_code != 200:
         return jsonify({'error': 'Failed to fetch repositories'}), 500
-    
     repos = response.json()
     return jsonify([{
         'id': repo['id'],
@@ -214,7 +211,6 @@ def get_repos():
         'language': repo['language'],
         'private': repo['private']
     } for repo in repos])
-
 
 @app.route('/api/repos/<repo_id>/webhook', methods=['POST'])
 @require_auth
@@ -227,7 +223,7 @@ def create_webhook(repo_id):
     if not repo_full_name:
         return jsonify({'error': 'Repository name required'}), 400
     
-    webhook_url = f"{request.host_url}webhook"
+    webhook_url = f"{app.config['APP_URL']}/webhook"  # Use APP_URL
     
     # Create webhook on GitHub
     webhook_data = {
@@ -249,7 +245,8 @@ def create_webhook(repo_id):
     )
     
     if response.status_code not in [200, 201]:
-        return jsonify({'error': 'Failed to create webhook'}), 500
+        logger.error(f"Webhook creation failed: {response.text}")
+        return jsonify({'error': 'Failed to create webhook', 'details': response.text}), 500
     
     webhook = response.json()
     
@@ -270,6 +267,7 @@ def create_webhook(repo_id):
     users[user['id']] = user_data
     save_json(USERS_FILE, users)
     
+    logger.info(f"Webhook created for {repo_full_name}, id: {webhook['id']}")
     return jsonify({'message': 'Webhook created', 'webhook_id': webhook['id']})
 
 

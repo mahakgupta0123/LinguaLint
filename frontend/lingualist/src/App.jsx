@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import LinguaLint from './LinguaLint.jsx'
 
 function App() {
 
   return (
     <>
-      <h1> hello World! </h1>
+      <LinguaLint />
     </>
   )
 }
