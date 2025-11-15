@@ -44,7 +44,7 @@ package-lock.json
 /frontend/dist
 *.log
 
- backend/data/
+backend/data/
 
 # Temporary files
 *.tmp
