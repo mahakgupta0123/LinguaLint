@@ -4,6 +4,6 @@ flask-socketio==5.3.5
 python-socketio==5.10.0
 requests==2.31.0
 python-dotenv==1.0.0
-flake8==6.1.0
-gunicorn==21.2.0
-simple-websocket==1.0.0
+eventlet==0.33.2
+dnspython==2.2.1
+certifi==2025.11.12

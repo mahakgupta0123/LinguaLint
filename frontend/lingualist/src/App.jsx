@@ -1,6 +1,4 @@
 // src/App.js
-import React, { useEffect, useState } from "react";
-import api from "./api";
 import Login from "./Login";
 import RepoList from "./RepoList";
 import LinguaLint from "./LinguaLint";

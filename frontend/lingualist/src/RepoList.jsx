@@ -1,6 +1,5 @@
 // src/components/RepoList.js
-import React, { useEffect, useState } from "react";
-import api from "./api";
+import React, { useEffect, useState } from "react"
 
 export default function RepoList() {
   const [repos, setRepos] = useState([]);

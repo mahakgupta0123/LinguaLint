@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: lingualint-backend
+    networks:
+      - lingualint-net
+    environment:
+      FLASK_ENV: development
+      SECRET_KEY: ${SECRET_KEY}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}   # e.g., http://localhost
+      APP_URL: ${APP_URL}             # e.g., http://localhost
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    ports:
+      - "5000:5000"  # REST API + Socket.IO
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend/lingualist
+    container_name: lingualint-frontend
+    depends_on:
+      - backend
+    networks:
+      - lingualint-net
+    environment:
+      VITE_BACKEND_URL: "/api"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: lingualint-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/lingualist/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/lingualist/dist:/usr/share/nginx/html:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - lingualint-net
+    restart: unless-stopped
+
+networks:
+  lingualint-net:
+    driver: bridge
