@@ -3,7 +3,7 @@
   "version": "1.10",
   "locale": {
     "source": "en",
-    "targets": ["es"]
+    "targets": ["hi"]
   },
   "buckets": {
     "json": {
@@ -12,7 +12,7 @@
   },
   "provider": {
     "id": "google",
-    "model": "gemini 2.0 flash",
-    "prompt": "Translate the provided text from {source} to {target}."
+    "model": "gemini-2.5-pro",
+    "prompt": "Translate the provided text from {source} to {target}, considering {context} cultural nuances. Respond only with the translated text."
   }
 }

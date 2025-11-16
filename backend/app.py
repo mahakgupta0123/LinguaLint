@@ -73,231 +73,73 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("LinguaLintBackend")
-"""
-✅ VERIFIED LINGO CLI INTEGRATION
-All syntax checked and corrected!
-"""
 
 def translate_text(text, target_language, cultural_context):
-    """Translate text using Lingo.dev CLI - VERIFIED WORKING"""
-    if not text or not LINGODOTDEV_API_KEY:
-        logger.warning(f"Translation skipped - text: {bool(text)}, api_key: {bool(LINGODOTDEV_API_KEY)}")
-        return text
-    
-    # Skip if English or empty
-    if target_language == 'en' or not text.strip():
+    """Lingo CLI with Gemini - Use static i18n.json and test file"""
+    if not text or target_language == 'en' or not text.strip():
+        logger.info("Skipping translation due to empty text or English")
         return text
     
     try:
-        # Language mapping
-        lang_map = {
-            'es': 'es', 'fr': 'fr', 'de': 'de', 'hi': 'hi',
-            'zh': 'zh', 'ja': 'ja', 'pt': 'pt', 'ru': 'ru', 'ar': 'ar'
-        }
+        lang_map = {'es': 'es', 'fr': 'fr', 'de': 'de', 'hi': 'hi', 'zh': 'zh', 'ja': 'ja', 'pt': 'pt', 'ru': 'ru', 'ar': 'ar'}
         lingo_lang = lang_map.get(target_language, target_language)
         
-        logger.info(f"🌐 Translating to {lingo_lang}...")
+        full_text = text if cultural_context == 'neutral' else f"{text} ({cultural_context} context)"
+        logger.info(f"🌐 Lingo-Gemini to {lingo_lang}: '{full_text[:30]}...'")
         
-        # ✅ CORRECT LINGO CLI USAGE
-        cmd = [
-            'npx', '-y', 'lingo.dev@latest',
-            'translate', '--to', lingo_lang,
-            '--api-key', LINGODOTDEV_API_KEY
-        ]
-        
-        # ✅ Text sent via stdin (CRITICAL!)
-        result = subprocess.run(
-            cmd,
-            input=text,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False
-        )
-        
-        logger.debug(f"Exit: {result.returncode}")
-        logger.debug(f"Output: {result.stdout[:200]}")
-        
-        # Parse output
-        if result.returncode == 0 and result.stdout.strip():
-            translated = result.stdout.strip()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create test file in temp dir
+            source_path = os.path.join(temp_dir, 'test.js')
+            with open(source_path, 'w') as f:
+                f.write(f'const msg = "{full_text}";')  # Simple string for extraction
             
-            # Clean up CLI noise (version info, progress bars, etc.)
-            lines = translated.split('\n')
-            clean_lines = [
-                line for line in lines 
-                if line.strip() and 
-                not line.startswith('npx:') and
-                not line.startswith('Need to install') and
-                not 'packages' in line.lower() and
-                not line.startswith('+') and
-                not '─' in line  # Remove progress bars
+            # Static i18n.json path
+            i18n_path = os.path.join(os.path.dirname(__file__), 'i18n.json')
+            if not os.path.exists(i18n_path):
+                logger.error(f"❌ i18n.json not found at {i18n_path}")
+                return text
+            
+            env = os.environ.copy()
+            google_key = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY')
+            if not google_key:
+                logger.error("❌ No GOOGLE_API_KEY or GEMINI_API_KEY found")
+                return text
+            env['GOOGLE_API_KEY'] = google_key
+            logger.info(f"✅ GOOGLE_API_KEY set, length={len(google_key)}")
+            
+            # Run Lingo in temp dir with static i18n.json
+            steps = [
+                ['npx', 'lingo.dev@latest', 'lockfile', '--cwd', temp_dir, '--config', i18n_path],
+                ['npx', 'lingo.dev@latest', 'run', '--cwd', temp_dir, '--config', i18n_path, '--sourcePaths', source_path]
             ]
+            for step, cmd in enumerate(steps):
+                logger.debug(f"Lingo step {step}: {' '.join(cmd)}")
+                result = subprocess.run(cmd, cwd=temp_dir, env=env, capture_output=True, text=True, timeout=30)
+                if result.returncode != 0:
+                    logger.error(f"❌ Lingo step {step} failed: {result.stderr}")
+                    return text
             
-            if clean_lines:
-                translated = clean_lines[-1].strip()  # Take last line
+            # Parse output
+            output_path = os.path.join(temp_dir, f'locales/{lingo_lang}.json')
+            if os.path.exists(output_path):
+                with open(output_path, 'r') as f:
+                    output_data = json.load(f)
+                    translated = output_data.get("msg", {}).get(lingo_lang, text)
+                    if cultural_context != 'neutral' and f" ({cultural_context} context)" in translated:
+                        translated = translated.replace(f" ({cultural_context} context)", "").strip()
+                    if translated != text and translated.strip():
+                        logger.info(f"✅ Lingo-Gemini success: '{text[:30]}...' -> '{translated[:30]}...'")
+                        return translated
             
-            # Verify translation worked
-            if translated and translated != text and len(translated) > 0:
-                logger.info(f"✅ Translation successful!")
-                logger.debug(f"Original: {text[:50]}...")
-                logger.debug(f"Translated: {translated[:50]}...")
-                return translated
-            else:
-                logger.warning(f"⚠️ Translation same as input")
-        else:
-            logger.error(f"❌ CLI failed: {result.stderr}")
-        
-        return text
-        
-    except subprocess.TimeoutExpired:
-        logger.error("⏱️ Timeout")
-        return text
-    except FileNotFoundError:
-        logger.error("❌ npx not found - Install Node.js")
+            logger.warning(f"No translation in {output_path}")
+            return text
+    
+    except subprocess.CalledProcessError as e:
+        logger.error(f"❌ Lingo CLI failed: {e.stderr}")
         return text
     except Exception as e:
-        logger.error(f"❌ Error: {str(e)}")
+        logger.error(f"❌ Lingo-Gemini error: {str(e)}")
         return text
-
-
-def translate_review_content(review, target_language, cultural_context):
-    """Translate review content - VERIFIED"""
-    if target_language == 'en':
-        return review
-    
-    try:
-        logger.info(f"=== TRANSLATING REVIEW TO {target_language} ===")
-        
-        # Test first
-        test = translate_text("Hello", target_language, cultural_context)
-        if test == "Hello":
-            logger.warning("Translation test failed - skipping")
-            return review
-        
-        logger.info(f"✅ Test passed: 'Hello' -> '{test}'")
-        
-        # Translate title
-        if review.get('title'):
-            review['translated_title'] = translate_text(
-                review['title'], target_language, cultural_context
-            )
-            time.sleep(0.5)
-        
-        # Translate description
-        if review.get('description'):
-            review['translated_description'] = translate_text(
-                review['description'], target_language, cultural_context
-            )
-            time.sleep(0.5)
-        
-        # Translate issues
-        if review.get('issues'):
-            logger.info(f"Translating {len(review['issues'])} issues...")
-            for issue in review['issues']:
-                if issue.get('message'):
-                    issue['message'] = translate_text(
-                        issue['message'], target_language, cultural_context
-                    )
-                    time.sleep(0.5)
-        
-        # Translate suggestions
-        if review.get('suggestions'):
-            logger.info(f"Translating {len(review['suggestions'])} suggestions...")
-            for suggestion in review['suggestions']:
-                if suggestion.get('message'):
-                    suggestion['message'] = translate_text(
-                        suggestion['message'], target_language, cultural_context
-                    )
-                    time.sleep(0.5)
-                if suggestion.get('suggestion'):
-                    suggestion['suggestion'] = translate_text(
-                        suggestion['suggestion'], target_language, cultural_context
-                    )
-                    time.sleep(0.5)
-        
-        logger.info(f"✅ TRANSLATION COMPLETE")
-        return review
-        
-    except Exception as e:
-        logger.error(f"Translation failed: {str(e)}")
-        return review
-
-
-# ============================================
-# QUICK TEST FUNCTION - USE THIS TO VERIFY!
-# ============================================
-def quick_test_translation():
-    """Run this to test translation manually"""
-    import os
-    
-    # Check environment
-    api_key = os.getenv('LINGODOTDEV_API_KEY')
-    if not api_key:
-        print("❌ LINGODOTDEV_API_KEY not set!")
-        return False
-    
-    print(f"✅ API key configured: {api_key[:10]}...")
-    
-    # Test translation
-    test_text = "Debug statement found. Remove before merging."
-    print(f"\n🧪 Testing: '{test_text}'")
-    
-    result = translate_text(test_text, 'hi', 'Indian')
-    
-    if result != test_text:
-        print(f"✅ SUCCESS! Translated to: '{result}'")
-        return True
-    else:
-        print(f"❌ FAILED - returned same text")
-        return False
-
-
-# ============================================
-# ALTERNATIVE METHOD (if above doesn't work)
-# ============================================
-def translate_text_shell_fallback(text, target_language, cultural_context):
-    """Fallback using shell pipe - USE IF MAIN METHOD FAILS"""
-    if not text or not LINGODOTDEV_API_KEY:
-        return text
-    
-    if target_language == 'en':
-        return text
-    
-    try:
-        lang_map = {'es': 'es', 'fr': 'fr', 'de': 'de', 'hi': 'hi', 
-                   'zh': 'zh', 'ja': 'ja', 'pt': 'pt', 'ru': 'ru', 'ar': 'ar'}
-        lingo_lang = lang_map.get(target_language, target_language)
-        
-        # Escape single quotes
-        safe_text = text.replace("'", "'\"'\"'")
-        
-        cmd = f"printf '%s' '{safe_text}' | npx -y lingo.dev@latest translate --to {lingo_lang} --api-key {LINGODOTDEV_API_KEY}"
-        
-        logger.info(f"Shell translation to {lingo_lang}")
-        
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode == 0 and result.stdout.strip():
-            translated = result.stdout.strip().split('\n')[-1]
-            if translated != text:
-                logger.info("✅ Shell translation worked!")
-                return translated
-        
-        logger.error(f"Shell failed: {result.stderr}")
-        return text
-        
-    except Exception as e:
-        logger.error(f"Shell error: {e}")
-        return text
-
-
 # ------------ ENHANCED CODE ANALYSIS ------------
 
 def enhanced_static_analysis(patch, filename):
