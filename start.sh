@@ -8,3 +8,5 @@ python3 app.py &
 # Start frontend
 cd ../frontend/lingualist
 npm run dev
+
+

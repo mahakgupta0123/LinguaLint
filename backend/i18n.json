@@ -1,19 +1,18 @@
 {
+  "$schema": "https://lingo.dev/schema/i18n.json",
   "version": "1.10",
   "locale": {
     "source": "en",
-    "targets": [
-      "es",
-      "hi",
-      "ja"
-    ]
+    "targets": ["es"]
   },
   "buckets": {
     "json": {
-      "include": [
-        "locales/[locale].json"
-      ]
+      "include": ["locales/[locale].json"]
     }
   },
-  "$schema": "https://lingo.dev/schema/i18n.json"
+  "provider": {
+    "id": "google",
+    "model": "gemini 2.0 flash",
+    "prompt": "Translate the provided text from {source} to {target}."
+  }
 }
